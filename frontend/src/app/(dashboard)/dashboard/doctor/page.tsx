@@ -1,0 +1,13 @@
+export default function DoctorDashboardPage() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-semibold text-slate-900">Dashboard Medico</h2>
+      <p className="mt-2 text-sm text-slate-600">
+        Placeholder para agenda, pacientes asignados y gestion de citas del medico.
+      </p>
+      <div className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+        Ruta activa: /dashboard/doctor
+      </div>
+    </div>
+  );
+}
