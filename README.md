@@ -33,7 +33,7 @@ Stack principal:
 
 ```bash
 git clone <URL_DEL_REPOSITORIO>
-cd RepositorioProyecto1
+cd 'Carpeta en la que se ha clonado'
 ```
 
 ### 2. Verificar variables de entorno
