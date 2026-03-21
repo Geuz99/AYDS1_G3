@@ -11,7 +11,11 @@ export default function Navbar() {
   const [session, setSession] = useState<{ role: string; email: string | null } | null>(null);
 
   // Ocultar navbar en páginas de autenticación
-  const isAuthPage = pathname === "/login" || pathname === "/admin-2fa";
+  const isAuthPage =
+    pathname === "/login" ||
+    pathname === "/admin-2fa" ||
+    pathname === "/register" ||
+    pathname === "/registro/paciente";
 
   useEffect(() => {
     if (isAuthenticated()) {

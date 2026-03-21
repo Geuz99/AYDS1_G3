@@ -26,8 +26,11 @@ urlpatterns = [
     path("auth/register/patient/", PatientRegistrationView.as_view(), name="register-patient"),
     path("auth/register/doctor/", DoctorRegistrationView.as_view(), name="register-doctor"),
  
-    # Login unificado (reemplaza el TokenObtainPairView genérico)
+    # Login unificado
     path("auth/login/", LoginView.as_view(), name="login"),
+
+    # Compatibilidad retroactiva para clientes que siguen usando /auth/token/
+    path("auth/token/", LoginView.as_view(), name="token-obtain-compat"),
  
     # 2FA solo para admin
     path("auth/admin/verify-2fa/", AdminVerify2FAView.as_view(), name="admin-verify-2fa"),
