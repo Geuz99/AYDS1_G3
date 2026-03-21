@@ -376,6 +376,13 @@ class DoctorRegistrationSerializer(serializers.Serializer):
     def validate_correo_electronico(self, value):
         return _validate_cross_email_uniqueness(value)
 
+    def validate_numero_colegiado(self, value):
+        if Doctor.objects.filter(numero_colegiado=value).exists():
+            raise serializers.ValidationError(
+                "Este número de colegiado ya está registrado en el sistema."
+            )
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         username = validated_data.pop("username")
