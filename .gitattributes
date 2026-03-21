@@ -1,0 +1,4 @@
+# Forzar siempre el salto de linea tipo Linux (LF) para scripts y configuraciones de Docker
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker-compose*.yml text eol=lf
