@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { login, saveSession, getDashboardRoute } from "@/lib/auth";
+import { login, saveSession, getDashboardRoute, isAuthenticated, getSession } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +11,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Si ya hay sesión activa, redirigir al dashboard correspondiente
+  useEffect(() => {
+    if (isAuthenticated()) {
+      const session = getSession();
+      if (session?.role) {
+        router.replace(getDashboardRoute(session.role));
+      }
+    }
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

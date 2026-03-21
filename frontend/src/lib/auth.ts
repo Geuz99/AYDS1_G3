@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL 
+const API_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "http://localhost:8000/api";
 
@@ -99,4 +99,26 @@ export function getDashboardRoute(role: string): string {
     default:
       return "/";
   }
+}
+
+export function isAuthenticated(): boolean {
+  if (typeof window === "undefined") return false;
+  const access = localStorage.getItem("access");
+  const role = localStorage.getItem("role");
+  return !!(access && role);
+}
+
+export function getSession() {
+  if (typeof window === "undefined") return null;
+  const access = localStorage.getItem("access");
+  const role = localStorage.getItem("role");
+  const email = localStorage.getItem("email");
+  const user_id = localStorage.getItem("user_id");
+  if (!access || !role) return null;
+  return { access, role, email, user_id };
+}
+
+export function logout(router: { push: (path: string) => void }) {
+  clearSession();
+  router.push("/login");
 }
