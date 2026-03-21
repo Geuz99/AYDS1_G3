@@ -106,12 +106,14 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': False,
-    'UPDATE_LAST_LOGIN': False,
+    "ACCESS_TOKEN_LIFETIME": __import__("datetime").timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": __import__("datetime").timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": True,  
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
+ 
 
 
 # Password validation
@@ -158,3 +160,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",   # Next.js en desarrollo
+]
