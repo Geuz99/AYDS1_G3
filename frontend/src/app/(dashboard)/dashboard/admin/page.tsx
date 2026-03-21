@@ -1,12 +1,36 @@
-export default function AdminDashboardPage() {
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSession, isAuthenticated } from "@/lib/auth";
+
+export default function AdminDashboard() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.replace("/login");
+      return;
+    }
+    const session = getSession();
+    if (session?.role !== "ADMIN") {
+      router.replace("/login");
+      return;
+    }
+    setEmail(session.email || "");
+  }, [router]);
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-slate-900">Dashboard Administrador</h2>
-      <p className="mt-2 text-sm text-slate-600">
-        Placeholder para aprobaciones, monitoreo general y configuracion de plataforma.
-      </p>
-      <div className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-        Ruta activa: /dashboard/admin
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Panel de Administrador</h1>
+          <p className="text-sm text-slate-500">{email}</p>
+        </div>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-slate-600">Bienvenido al panel de administración. Aquí irán los módulos de gestión.</p>
       </div>
     </div>
   );
