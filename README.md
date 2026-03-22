@@ -213,6 +213,24 @@ Reglas de negocio en agenda:
 - Una cita solo puede programarse dentro de un horario habilitado del medico (dia y hora).
 - Para marcar una cita como `ATENDIDA`, se requiere registrar `tratamiento`.
 
+## Aprobacion de cuentas (temporal para desarrollo)
+
+Actualmente, los registros de `PACIENTE` y `DOCTOR` se estan **auto-aprobando** al momento de crear la cuenta para no bloquear pruebas del modulo medico mientras se implementa el flujo formal de aprobacion por administrador.
+
+Implementacion temporal aplicada:
+
+- Archivo: `users/serializers.py`
+- Serializers: `PatientRegistrationSerializer.create` y `DoctorRegistrationSerializer.create`
+- Cambio: al crear `User`, se asigna `approval_status=User.ApprovalStatus.APPROVED`.
+
+Cuando se implemente el modulo de aprobacion por admin, revertir este comportamiento asi:
+
+1. En `users/serializers.py`, eliminar la asignacion explicita `approval_status=User.ApprovalStatus.APPROVED` en ambos metodos `create`.
+2. Dejar que el modelo use su valor por defecto (`PENDING`) o asignar explicitamente `PENDING` en registro.
+3. Mantener la validacion en login (`users/serializers_auth.py`) que bloquea cuentas en estado `PENDING`, `REJECTED` o `INACTIVE`.
+
+Con eso, se restablece el flujo esperado: registro -> pendiente -> aprobacion/rechazo por administrador.
+
 ---
 
 ## HU-02: Registro de Nuevo Medico

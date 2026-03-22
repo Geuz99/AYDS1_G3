@@ -11,7 +11,7 @@ from .views import (
     PatientViewSet,
 )
 # ← Importamos las nuevas vistas de auth
-from .views_auth import AdminVerify2FAView, LoginView
+from .views_auth import AdminVerify2FAView, ChangePasswordView, LoginView
  
 router = DefaultRouter()
 router.register(r"patients", PatientViewSet, basename="patients")
@@ -28,6 +28,9 @@ urlpatterns = [
  
     # Login unificado
     path("auth/login/", LoginView.as_view(), name="login"),
+
+    # Cambio de contrasena para usuario autenticado
+    path("auth/change-password/", ChangePasswordView.as_view(), name="change-password"),
 
     # Compatibilidad retroactiva para clientes que siguen usando /auth/token/
     path("auth/token/", LoginView.as_view(), name="token-obtain-compat"),

@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import User
-from .serializers_auth import CustomTokenObtainPairSerializer
+from .serializers_auth import ChangePasswordSerializer, CustomTokenObtainPairSerializer
 
 
 class LoginView(APIView):
@@ -107,5 +107,27 @@ class AdminVerify2FAView(APIView):
                 "user_id": user.id,
                 "email": user.email,
             },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/auth/change-password/
+    Header: Authorization: Bearer <access_token>
+    Body: { "current_password": "...", "new_password": "..." }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save(update_fields=["password"])
+
+        return Response(
+            {"detail": "Contrasena actualizada correctamente."},
             status=status.HTTP_200_OK,
         )
