@@ -48,6 +48,14 @@ docker compose up -d
 El frontend estará en `http://localhost:3000`.
 
 ---
+## Pantallas clave implementadas
+
+- Login: `http://localhost:3000/login`
+- Registro de paciente (HU-01): `http://localhost:3000/register` y `http://localhost:3000/registro/paciente`
+
+El formulario de registro de paciente consume `POST /api/auth/register/patient/` y envia los datos en `multipart/form-data`, incluyendo `fotografia` como campo opcional.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 ## Estructura del proyecto
 

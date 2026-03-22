@@ -128,6 +128,58 @@ Autenticacion y registro (publicos):
 | `POST` | `/api/auth/admin/verify-2fa/` | `application/json` | Verificacion 2FA admin |
 
 CRUD (requieren JWT):
+- `POST /api/auth/register/patient/`
+- `POST /api/auth/register/doctor/`
+- `POST /api/auth/login/`
+- `POST /api/auth/token/` (compatibilidad con clientes existentes)
+- `POST /api/auth/token/refresh/`
+
+## HU-01 Registro de nuevo paciente
+
+Endpoint:
+
+- `POST /api/auth/register/patient/`
+
+Campos esperados (multipart/form-data):
+
+- `nombre` (requerido)
+- `apellido` (requerido)
+- `dpi` (requerido, 13 digitos)
+- `genero` (requerido: `M`, `F`, `O`)
+- `direccion` (requerido)
+- `telefono` (requerido, `+502XXXXXXXX` o `XXXXXXXX`)
+- `fecha_nacimiento` (requerido, formato `YYYY-MM-DD`)
+- `correo_electronico` (requerido, unico)
+- `password` (requerido)
+- `fotografia` (opcional)
+
+Validaciones clave de HU-01:
+
+1. La contraseña exige minimo 8 caracteres, al menos 1 minuscula, 1 mayuscula y 1 numero.
+2. El correo se valida como unico contra `users_user.email`, `users_patient.correo_electronico` y `users_doctor.correo_electronico`.
+3. La contraseña se almacena cifrada (hash) usando `set_password` de Django.
+4. Si no se envia `username`, se genera automaticamente a partir del correo.
+
+Ejemplo rapido con cURL (sin fotografia):
+
+```bash
+curl -X POST http://localhost:8000/api/auth/register/patient/ \
+   -F "nombre=Juan" \
+   -F "apellido=Perez" \
+   -F "dpi=1234567890123" \
+   -F "genero=M" \
+   -F "direccion=Zona 10" \
+   -F "telefono=12345678" \
+   -F "fecha_nacimiento=1995-05-20" \
+   -F "correo_electronico=juan.perez@correo.com" \
+   -F "password=ClaveSegura1"
+```
+
+Frontend relacionado:
+
+- Pantalla de registro de paciente: `http://localhost:3000/register`
+
+CRUD:
 
 - `GET|POST|PUT|PATCH|DELETE /api/patients/`
 - `GET|POST|PUT|PATCH|DELETE /api/doctors/`
@@ -208,15 +260,23 @@ Formulario React con 14 campos en 4 secciones (credenciales, datos personales, d
 
 ## Flujo rapido para probar JWT
 
-### 1. Obtener token
+### 1. Iniciar sesion
+
+```bash
+curl -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+   -d '{"email":"admin@saludplus.local","password":"Admin12345!"}'
+```
+
+Tambien puedes usar el endpoint compatible heredado:
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/token/ \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"Admin12345!"}'
+   -H "Content-Type: application/json" \
+    -d '{"email":"admin@saludplus.local","password":"Admin12345!"}'
 ```
 
-Respuesta esperada: JSON con `access` y `refresh`.
+Respuesta esperada: JSON con `access`, `refresh` y metadatos de usuario.
 
 ### 2. Consumir endpoint protegido
 

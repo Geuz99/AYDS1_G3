@@ -9,6 +9,9 @@ from .models import CitaMedica, Doctor, Horario, Patient, User, WeekDayChoices
 
 LOCAL_PHONE_REGEX = re.compile(r"^(?:\+502)?[0-9]{8}$")
 LOCAL_DPI_REGEX = re.compile(r"^[0-9]{13}$")
+PASSWORD_LOWER_REGEX = re.compile(r"[a-z]")
+PASSWORD_UPPER_REGEX = re.compile(r"[A-Z]")
+PASSWORD_DIGIT_REGEX = re.compile(r"[0-9]")
 MINIMUM_AGE = 18
 WEEKDAY_INDEX_TO_CODE = {
     0: WeekDayChoices.MONDAY,
@@ -44,6 +47,33 @@ def _validate_dpi(value):
     if not LOCAL_DPI_REGEX.match(value):
         raise serializers.ValidationError("El DPI debe contener exactamente 13 digitos.")
     return value
+
+
+def _validate_password_complexity(value):
+    if len(value) < 8:
+        raise serializers.ValidationError("La contrasena debe tener al menos 8 caracteres.")
+    if not PASSWORD_LOWER_REGEX.search(value):
+        raise serializers.ValidationError("La contrasena debe incluir al menos 1 letra minuscula.")
+    if not PASSWORD_UPPER_REGEX.search(value):
+        raise serializers.ValidationError("La contrasena debe incluir al menos 1 letra mayuscula.")
+    if not PASSWORD_DIGIT_REGEX.search(value):
+        raise serializers.ValidationError("La contrasena debe incluir al menos 1 numero.")
+    return value
+
+
+def _generate_unique_username_from_email(email):
+    base = (email.split("@")[0] or "paciente").lower()
+    candidate = re.sub(r"[^a-z0-9._-]", "", base)[:30] or "paciente"
+
+    if not User.objects.filter(username=candidate).exists():
+        return candidate
+
+    suffix = 1
+    while True:
+        generated = f"{candidate}_{suffix}"
+        if not User.objects.filter(username=generated).exists():
+            return generated
+        suffix += 1
 
 
 def _validate_cross_email_uniqueness(email, instance=None):
@@ -209,18 +239,20 @@ class CitaMedicaSerializer(serializers.ModelSerializer):
 class PatientRegistrationSerializer(serializers.Serializer):
     username = serializers.CharField(
         max_length=150,
+        required=False,
+        allow_blank=True,
         error_messages={"required": "El username es obligatorio.", "blank": "El username no puede ir vacio."},
     )
     password = serializers.CharField(
         write_only=True,
-        min_length=8,
         error_messages={
             "required": "La contrasena es obligatoria.",
             "blank": "La contrasena no puede ir vacia.",
-            "min_length": "La contrasena debe tener al menos 8 caracteres.",
         },
     )
     email = serializers.EmailField(
+        required=False,
+        allow_blank=True,
         error_messages={"required": "El email de usuario es obligatorio.", "invalid": "El email de usuario no es valido."}
     )
     nombre = serializers.CharField(
@@ -256,12 +288,19 @@ class PatientRegistrationSerializer(serializers.Serializer):
     fotografia = serializers.ImageField(required=False, allow_null=True)
 
     def validate_username(self, value):
+        if not value:
+            return value
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError("Este username ya existe.")
         return value
 
     def validate_email(self, value):
+        if not value:
+            return value
         return _validate_cross_email_uniqueness(value)
+
+    def validate_password(self, value):
+        return _validate_password_complexity(value)
 
     def validate_fecha_nacimiento(self, value):
         return _validate_minimum_age(value)
@@ -277,9 +316,16 @@ class PatientRegistrationSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        username = validated_data.pop("username")
+        username = validated_data.pop("username", "").strip()
         raw_password = validated_data.pop("password")
-        email = validated_data.pop("email")
+        email = validated_data.pop("email", "").strip()
+        profile_email = validated_data.get("correo_electronico")
+
+        if not email:
+            email = profile_email
+
+        if not username:
+            username = _generate_unique_username_from_email(email)
 
         user = User(username=username, email=email, role=User.Role.PATIENT)
         user.set_password(raw_password)
@@ -363,6 +409,9 @@ class DoctorRegistrationSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         return _validate_cross_email_uniqueness(value)
+
+    def validate_password(self, value):
+        return _validate_password_complexity(value)
 
     def validate_fecha_nacimiento(self, value):
         return _validate_minimum_age(value)
