@@ -101,6 +101,19 @@ export function getDashboardRoute(role: string): string {
   }
 }
 
+export function getProfileRoute(role: string): string {
+  switch (role) {
+    case "DOCTOR":
+      return "/dashboard";
+    case "ADMIN":
+      return "/dashboard/admin";
+    case "PATIENT":
+      return "/dashboard/paciente";
+    default:
+      return "/";
+  }
+}
+
 export function isAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
   const access = localStorage.getItem("access");

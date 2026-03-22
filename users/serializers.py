@@ -167,8 +167,23 @@ class DoctorSerializer(serializers.ModelSerializer):
     def validate_correo_electronico(self, value):
         return _validate_cross_email_uniqueness(value, instance=self.instance)
 
+    def update(self, instance, validated_data):
+        old_photo_name = instance.fotografia.name if instance.fotografia else None
+        updated_instance = super().update(instance, validated_data)
+
+        new_photo_name = updated_instance.fotografia.name if updated_instance.fotografia else None
+        if old_photo_name and old_photo_name != new_photo_name:
+            instance.fotografia.storage.delete(old_photo_name)
+
+        return updated_instance
+
 
 class HorarioSerializer(serializers.ModelSerializer):
+    doctor = serializers.PrimaryKeyRelatedField(
+        queryset=Doctor.objects.all(),
+        required=False,
+    )
+
     class Meta:
         model = Horario
         fields = "__all__"
@@ -327,7 +342,13 @@ class PatientRegistrationSerializer(serializers.Serializer):
         if not username:
             username = _generate_unique_username_from_email(email)
 
-        user = User(username=username, email=email, role=User.Role.PATIENT)
+        # Temporal: auto-aprobar nuevos perfiles hasta implementar el flujo de aprobacion por admin.
+        user = User(
+            username=username,
+            email=email,
+            role=User.Role.PATIENT,
+            approval_status=User.ApprovalStatus.APPROVED,
+        )
         user.set_password(raw_password)
         user.save()
 
@@ -438,7 +459,13 @@ class DoctorRegistrationSerializer(serializers.Serializer):
         raw_password = validated_data.pop("password")
         email = validated_data.pop("email")
 
-        user = User(username=username, email=email, role=User.Role.DOCTOR)
+        # Temporal: auto-aprobar nuevos perfiles hasta implementar el flujo de aprobacion por admin.
+        user = User(
+            username=username,
+            email=email,
+            role=User.Role.DOCTOR,
+            approval_status=User.ApprovalStatus.APPROVED,
+        )
         user.set_password(raw_password)
         user.save()
 
