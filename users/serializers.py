@@ -205,6 +205,18 @@ class CitaMedicaSerializer(serializers.ModelSerializer):
         }
 
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        medico = instance.medico
+        if medico is not None:
+            data["medico_detalle"] = {
+                "nombre": medico.nombre,
+                "apellido": medico.apellido,
+                "especialidad": medico.especialidad,
+                "direccion_clinica": medico.direccion_clinica,
+            }
+        return data
+
     def get_fields(self):
         # Belt-and-suspenders: parchamos el campo despues de que DRF lo construye
         # por si extra_kwargs no alcanza a aplicarse antes del binding.
