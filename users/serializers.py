@@ -191,10 +191,37 @@ class HorarioSerializer(serializers.ModelSerializer):
 
 
 class CitaMedicaSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = CitaMedica
         fields = "__all__"
         read_only_fields = ("id",)
+        extra_kwargs = {
+            # paciente es opcional en el payload: perform_create lo inyecta
+            # automaticamente desde el JWT para rol PATIENT.
+            # required=False + default=None = campo genuinamente omisible.
+            # Sin default, DRF lanza 'required' igual aunque required=False.
+            "paciente": {"required": False, "allow_null": True, "default": None},
+        }
+
+
+    def get_fields(self):
+        # Belt-and-suspenders: parchamos el campo despues de que DRF lo construye
+        # por si extra_kwargs no alcanza a aplicarse antes del binding.
+        fields = super().get_fields()
+        paciente_field = fields.get("paciente")
+        if paciente_field is not None:
+            paciente_field.required = False
+            paciente_field.allow_null = True
+        return fields
+
+
+    def validate_fecha_cita(self, value):
+        if value < date.today():
+            raise serializers.ValidationError(
+                "La fecha de la cita no puede ser en el pasado."
+            )
+        return value
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
