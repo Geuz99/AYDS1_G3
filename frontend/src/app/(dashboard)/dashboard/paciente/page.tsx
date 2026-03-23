@@ -29,10 +29,16 @@ export default function PacienteDashboard() {
           <h1 className="text-2xl font-bold text-slate-900">Panel de Paciente</h1>
           <p className="text-sm text-slate-500">{email}</p>
         </div>
+        <div className="flex gap-2">
         <Link href="/dashboard/paciente/reservar"
           className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
           Programar nueva cita
         </Link>
+        <Link href="/dashboard/paciente/citas"
+          className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+          Mis citas
+        </Link>
+        </div>
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-slate-600">Bienvenido al panel de paciente. Aquí irán los módulos de gestión.</p>
