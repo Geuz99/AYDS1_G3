@@ -1,8 +1,10 @@
+import datetime
 from datetime import time
 
 from django.conf import settings
 from django.core.mail import send_mail
 from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -174,7 +176,99 @@ class DoctorViewSet(viewsets.ModelViewSet):
             return base_queryset
         if getattr(user, "role", None) == User.Role.DOCTOR:
             return base_queryset.filter(user=user)
+        if getattr(user, "role", None) == User.Role.PATIENT:
+            # Pacientes pueden ver todos los medicos aprobados para poder agendar citas
+            return base_queryset.filter(user__approval_status=User.ApprovalStatus.APPROVED)
         return base_queryset.none()
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="disponibilidad",
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def disponibilidad(self, request, pk=None):
+        """GET /api/doctors/{id}/disponibilidad/?fecha=YYYY-MM-DD
+
+        Retorna la lista de horas disponibles del medico para la fecha dada,
+        en bloques de 30 minutos, excluyendo las ya ocupadas por citas ACTIVAS.
+        """
+        fecha_str = request.query_params.get("fecha")
+        if not fecha_str:
+            return Response(
+                {"detail": "El parametro 'fecha' es requerido (formato YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            fecha = datetime.date.fromisoformat(fecha_str)
+        except ValueError:
+            return Response(
+                {"detail": "Formato de fecha invalido. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if fecha < datetime.date.today():
+            return Response(
+                {"detail": "No se puede consultar disponibilidad para fechas pasadas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        doctor = self.get_object()
+        day_code = WEEKDAY_INDEX_TO_CODE.get(fecha.weekday())
+
+        # Obtener horarios del medico que incluyan ese dia de semana
+        horarios_del_dia = [
+            h for h in Horario.objects.filter(doctor=doctor)
+            if day_code in (h.dias_semana or [])
+        ]
+
+        if not horarios_del_dia:
+            return Response(
+                {
+                    "fecha": fecha_str,
+                    "doctor_id": doctor.pk,
+                    "disponibles": [],
+                    "mensaje": "El medico no tiene horario habilitado para ese dia.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Citas ya reservadas en esa fecha (estado ACTIVA)
+        citas_ocupadas = set(
+            CitaMedica.objects.filter(
+                medico=doctor,
+                fecha_cita=fecha,
+                estado=CitaMedica.EstadoChoices.ACTIVA,
+            ).values_list("hora_cita", flat=True)
+        )
+
+        SLOT_MINUTES = 30
+
+        horas_disponibles = []
+        for horario in horarios_del_dia:
+            # Iterar sobre bloques de SLOT_MINUTES dentro del horario
+            cursor = datetime.datetime.combine(fecha, horario.hora_inicio)
+            fin = datetime.datetime.combine(fecha, horario.hora_fin)
+            delta = datetime.timedelta(minutes=SLOT_MINUTES)
+
+            while cursor + delta <= fin:
+                slot_time = cursor.time()
+                if slot_time not in citas_ocupadas:
+                    horas_disponibles.append(slot_time.strftime("%H:%M"))
+                cursor += delta
+
+        # Eliminar duplicados (si hubiera horarios solapados) y ordenar
+        horas_disponibles = sorted(set(horas_disponibles))
+
+        return Response(
+            {
+                "fecha": fecha_str,
+                "doctor_id": doctor.pk,
+                "disponibles": horas_disponibles,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class HorarioViewSet(viewsets.ModelViewSet):
@@ -307,6 +401,33 @@ class CitaMedicaViewSet(viewsets.ModelViewSet):
         if getattr(user, "role", None) == User.Role.DOCTOR:
             return base_queryset.filter(medico__user=user)
         return base_queryset.none()
+
+    def perform_create(self, serializer):
+        """Asigna automaticamente el paciente autenticado al crear una cita.
+        Solo usuarios con rol PATIENT pueden programar citas por este endpoint.
+        Los administradores pueden enviar el paciente explicitamente en el payload.
+        """
+        user = self.request.user
+        role = getattr(user, "role", None)
+
+        # Administradores pueden especificar el paciente manualmente en el payload
+        if user.is_staff or role == User.Role.ADMIN:
+            serializer.save()
+            return
+
+        # Solo pacientes aprobados pueden crear citas
+        if role != User.Role.PATIENT:
+            raise PermissionDenied(
+                "Solo un paciente autenticado puede programar una cita."
+            )
+
+        patient = Patient.objects.filter(user=user).first()
+        if patient is None:
+            raise PermissionDenied(
+                "No existe un perfil de paciente asociado al usuario autenticado."
+            )
+
+        serializer.save(paciente=patient)
 
     def perform_update(self, serializer):
         cita_original = serializer.instance
