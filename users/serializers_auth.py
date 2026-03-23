@@ -3,6 +3,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
 
 
+PASSWORD_LOWER_REGEX = __import__("re").compile(r"[a-z]")
+PASSWORD_UPPER_REGEX = __import__("re").compile(r"[A-Z]")
+PASSWORD_DIGIT_REGEX = __import__("re").compile(r"[0-9]")
+
+
 class CustomTokenObtainPairSerializer(serializers.Serializer):
     """
     Serializer de login completamente personalizado.
@@ -67,3 +72,36 @@ class CustomTokenObtainPairSerializer(serializers.Serializer):
             data["requires_2fa"] = True
 
         return data
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("La contrasena debe tener al menos 8 caracteres.")
+        if not PASSWORD_LOWER_REGEX.search(value):
+            raise serializers.ValidationError("La contrasena debe incluir al menos 1 letra minuscula.")
+        if not PASSWORD_UPPER_REGEX.search(value):
+            raise serializers.ValidationError("La contrasena debe incluir al menos 1 letra mayuscula.")
+        if not PASSWORD_DIGIT_REGEX.search(value):
+            raise serializers.ValidationError("La contrasena debe incluir al menos 1 numero.")
+        return value
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        current_password = attrs.get("current_password")
+        new_password = attrs.get("new_password")
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError(
+                {"current_password": "La contrasena actual no es correcta."}
+            )
+
+        if current_password == new_password:
+            raise serializers.ValidationError(
+                {"new_password": "La nueva contrasena debe ser diferente a la actual."}
+            )
+
+        return attrs

@@ -9,6 +9,9 @@ from .models import CitaMedica, Doctor, Horario, Patient, User, WeekDayChoices
 
 LOCAL_PHONE_REGEX = re.compile(r"^(?:\+502)?[0-9]{8}$")
 LOCAL_DPI_REGEX = re.compile(r"^[0-9]{13}$")
+PASSWORD_LOWER_REGEX = re.compile(r"[a-z]")
+PASSWORD_UPPER_REGEX = re.compile(r"[A-Z]")
+PASSWORD_DIGIT_REGEX = re.compile(r"[0-9]")
 MINIMUM_AGE = 18
 WEEKDAY_INDEX_TO_CODE = {
     0: WeekDayChoices.MONDAY,
@@ -44,6 +47,33 @@ def _validate_dpi(value):
     if not LOCAL_DPI_REGEX.match(value):
         raise serializers.ValidationError("El DPI debe contener exactamente 13 digitos.")
     return value
+
+
+def _validate_password_complexity(value):
+    if len(value) < 8:
+        raise serializers.ValidationError("La contrasena debe tener al menos 8 caracteres.")
+    if not PASSWORD_LOWER_REGEX.search(value):
+        raise serializers.ValidationError("La contrasena debe incluir al menos 1 letra minuscula.")
+    if not PASSWORD_UPPER_REGEX.search(value):
+        raise serializers.ValidationError("La contrasena debe incluir al menos 1 letra mayuscula.")
+    if not PASSWORD_DIGIT_REGEX.search(value):
+        raise serializers.ValidationError("La contrasena debe incluir al menos 1 numero.")
+    return value
+
+
+def _generate_unique_username_from_email(email):
+    base = (email.split("@")[0] or "paciente").lower()
+    candidate = re.sub(r"[^a-z0-9._-]", "", base)[:30] or "paciente"
+
+    if not User.objects.filter(username=candidate).exists():
+        return candidate
+
+    suffix = 1
+    while True:
+        generated = f"{candidate}_{suffix}"
+        if not User.objects.filter(username=generated).exists():
+            return generated
+        suffix += 1
 
 
 def _validate_cross_email_uniqueness(email, instance=None):
@@ -137,8 +167,23 @@ class DoctorSerializer(serializers.ModelSerializer):
     def validate_correo_electronico(self, value):
         return _validate_cross_email_uniqueness(value, instance=self.instance)
 
+    def update(self, instance, validated_data):
+        old_photo_name = instance.fotografia.name if instance.fotografia else None
+        updated_instance = super().update(instance, validated_data)
+
+        new_photo_name = updated_instance.fotografia.name if updated_instance.fotografia else None
+        if old_photo_name and old_photo_name != new_photo_name:
+            instance.fotografia.storage.delete(old_photo_name)
+
+        return updated_instance
+
 
 class HorarioSerializer(serializers.ModelSerializer):
+    doctor = serializers.PrimaryKeyRelatedField(
+        queryset=Doctor.objects.all(),
+        required=False,
+    )
+
     class Meta:
         model = Horario
         fields = "__all__"
@@ -146,10 +191,37 @@ class HorarioSerializer(serializers.ModelSerializer):
 
 
 class CitaMedicaSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = CitaMedica
         fields = "__all__"
         read_only_fields = ("id",)
+        extra_kwargs = {
+            # paciente es opcional en el payload: perform_create lo inyecta
+            # automaticamente desde el JWT para rol PATIENT.
+            # required=False + default=None = campo genuinamente omisible.
+            # Sin default, DRF lanza 'required' igual aunque required=False.
+            "paciente": {"required": False, "allow_null": True, "default": None},
+        }
+
+
+    def get_fields(self):
+        # Belt-and-suspenders: parchamos el campo despues de que DRF lo construye
+        # por si extra_kwargs no alcanza a aplicarse antes del binding.
+        fields = super().get_fields()
+        paciente_field = fields.get("paciente")
+        if paciente_field is not None:
+            paciente_field.required = False
+            paciente_field.allow_null = True
+        return fields
+
+
+    def validate_fecha_cita(self, value):
+        if value < date.today():
+            raise serializers.ValidationError(
+                "La fecha de la cita no puede ser en el pasado."
+            )
+        return value
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -209,18 +281,20 @@ class CitaMedicaSerializer(serializers.ModelSerializer):
 class PatientRegistrationSerializer(serializers.Serializer):
     username = serializers.CharField(
         max_length=150,
+        required=False,
+        allow_blank=True,
         error_messages={"required": "El username es obligatorio.", "blank": "El username no puede ir vacio."},
     )
     password = serializers.CharField(
         write_only=True,
-        min_length=8,
         error_messages={
             "required": "La contrasena es obligatoria.",
             "blank": "La contrasena no puede ir vacia.",
-            "min_length": "La contrasena debe tener al menos 8 caracteres.",
         },
     )
     email = serializers.EmailField(
+        required=False,
+        allow_blank=True,
         error_messages={"required": "El email de usuario es obligatorio.", "invalid": "El email de usuario no es valido."}
     )
     nombre = serializers.CharField(
@@ -256,12 +330,19 @@ class PatientRegistrationSerializer(serializers.Serializer):
     fotografia = serializers.ImageField(required=False, allow_null=True)
 
     def validate_username(self, value):
+        if not value:
+            return value
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError("Este username ya existe.")
         return value
 
     def validate_email(self, value):
+        if not value:
+            return value
         return _validate_cross_email_uniqueness(value)
+
+    def validate_password(self, value):
+        return _validate_password_complexity(value)
 
     def validate_fecha_nacimiento(self, value):
         return _validate_minimum_age(value)
@@ -277,11 +358,24 @@ class PatientRegistrationSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        username = validated_data.pop("username")
+        username = validated_data.pop("username", "").strip()
         raw_password = validated_data.pop("password")
-        email = validated_data.pop("email")
+        email = validated_data.pop("email", "").strip()
+        profile_email = validated_data.get("correo_electronico")
 
-        user = User(username=username, email=email, role=User.Role.PATIENT)
+        if not email:
+            email = profile_email
+
+        if not username:
+            username = _generate_unique_username_from_email(email)
+
+        # Temporal: auto-aprobar nuevos perfiles hasta implementar el flujo de aprobacion por admin.
+        user = User(
+            username=username,
+            email=email,
+            role=User.Role.PATIENT,
+            approval_status=User.ApprovalStatus.APPROVED,
+        )
         user.set_password(raw_password)
         user.save()
 
@@ -364,6 +458,9 @@ class DoctorRegistrationSerializer(serializers.Serializer):
     def validate_email(self, value):
         return _validate_cross_email_uniqueness(value)
 
+    def validate_password(self, value):
+        return _validate_password_complexity(value)
+
     def validate_fecha_nacimiento(self, value):
         return _validate_minimum_age(value)
 
@@ -376,13 +473,26 @@ class DoctorRegistrationSerializer(serializers.Serializer):
     def validate_correo_electronico(self, value):
         return _validate_cross_email_uniqueness(value)
 
+    def validate_numero_colegiado(self, value):
+        if Doctor.objects.filter(numero_colegiado=value).exists():
+            raise serializers.ValidationError(
+                "Este número de colegiado ya está registrado en el sistema."
+            )
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         username = validated_data.pop("username")
         raw_password = validated_data.pop("password")
         email = validated_data.pop("email")
 
-        user = User(username=username, email=email, role=User.Role.DOCTOR)
+        # Temporal: auto-aprobar nuevos perfiles hasta implementar el flujo de aprobacion por admin.
+        user = User(
+            username=username,
+            email=email,
+            role=User.Role.DOCTOR,
+            approval_status=User.ApprovalStatus.APPROVED,
+        )
         user.set_password(raw_password)
         user.save()
 

@@ -3,15 +3,20 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { isAuthenticated, getSession, logout, getDashboardRoute } from "@/lib/auth";
+import { isAuthenticated, getSession, logout, getProfileRoute, getDashboardRoute } from "@/lib/auth";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<{ role: string; email: string | null } | null>(null);
+  const brandHref = session ? getDashboardRoute(session.role) : "/";
 
   // Ocultar navbar en páginas de autenticación
-  const isAuthPage = pathname === "/login" || pathname === "/admin-2fa";
+  const isAuthPage =
+    pathname === "/login" ||
+    pathname === "/admin-2fa" ||
+    pathname === "/register" ||
+    pathname === "/registro/paciente";
 
   useEffect(() => {
     if (isAuthenticated()) {
@@ -49,7 +54,7 @@ export default function Navbar() {
   return (
     <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
       <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="text-xl font-semibold tracking-tight text-slate-900">
+        <Link href={brandHref} className="text-xl font-semibold tracking-tight text-slate-900">
           SaludPlus
         </Link>
 
@@ -57,18 +62,18 @@ export default function Navbar() {
           {session ? (
             // Usuario con sesión activa
             <>
-              <Link
-                href={getDashboardRoute(session.role)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-              >
-                Mi Panel
-              </Link>
-              <span className="text-slate-500 text-xs hidden sm:block">
+              <span className="hidden text-xs text-slate-500 sm:block">
                 {session.email}
               </span>
+              <Link
+                href={getProfileRoute(session.role)}
+                className="rounded-lg border border-sky-600 bg-sky-600 px-4 py-2 text-white transition hover:bg-sky-700"
+              >
+                Mi Perfil
+              </Link>
               <button
                 onClick={handleLogout}
-                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                className="rounded-lg border border-red-600 bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
               >
                 Cerrar sesión
               </button>
