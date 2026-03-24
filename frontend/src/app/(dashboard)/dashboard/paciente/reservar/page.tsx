@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { getSession, isAuthenticated } from "@/lib/auth";
 import ReservaCitaForm from "@/components/ReservaCitaForm";
+import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -138,6 +139,19 @@ export default function ReservarCitaPage() {
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="border-b border-slate-200 bg-white px-6 py-5 shadow-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-4">
+          {step === "list" && (
+            <Link
+              href="/dashboard/paciente"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700
+                         transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Regresar
+            </Link>
+          )}
+
           {step === "form" && (
             <button
               type="button"
@@ -346,6 +360,7 @@ export default function ReservarCitaPage() {
             <ReservaCitaForm
               doctorId={selectedDoctor.id}
               doctorName={`Dr. ${selectedDoctor.nombre} ${selectedDoctor.apellido}`}
+              onCancel={handleBack}
               onSuccess={() => {
                 // After booking, wait 2 s then go back to list so patient can book again if needed
                 setTimeout(() => handleBack(), 2000);

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { setAuthToken, setTokenProvider } from "@/lib/api";
+import { setTokenProvider } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -12,6 +12,8 @@ interface ReservaCitaFormProps {
   doctorName: string;
   /** Called after a successful booking so the parent can react (e.g. redirect) */
   onSuccess?: () => void;
+  /** Called when patient cancels the booking flow */
+  onCancel?: () => void;
 }
 
 interface DisponibilidadResponse {
@@ -74,6 +76,7 @@ export default function ReservaCitaForm({
   doctorId,
   doctorName,
   onSuccess,
+  onCancel,
 }: ReservaCitaFormProps) {
   // Inject session token into the api helper once on mount
   useEffect(() => {
@@ -205,6 +208,19 @@ export default function ReservaCitaForm({
   // ── Derived state for button guard ────────────────────────────────────────
   const isFormReady =
     !!fecha && !!horaSeleccionada && motivo.trim().length > 0 && !isLoadingSlots;
+
+  const handleCancel = () => {
+    if (isSubmitting) return;
+    setFecha("");
+    setHorariosDisponibles([]);
+    setHoraSeleccionada("");
+    setMotivo("");
+    setError("");
+    setFieldErrors([]);
+    setSuccessMessage("");
+    fetchedForFecha.current = "";
+    onCancel?.();
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -356,34 +372,49 @@ export default function ReservaCitaForm({
           </div>
         )}
 
-        {/* ── Submit ───────────────────────────────────────────────────── */}
-        <button
-          id="btn-confirmar-cita"
-          type="submit"
-          disabled={!isFormReady || isSubmitting}
-          className="w-full flex justify-center items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3
-                     text-sm font-semibold text-white shadow-sm transition-all duration-150
-                     hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? (
-            <>
-              <svg
-                className="animate-spin h-4 w-4 shrink-0"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-              Confirmando…
-            </>
-          ) : (
-            "Confirmar cita"
-          )}
-        </button>
+        {/* ── Actions ──────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            id="btn-cancelar-cita"
+            type="button"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3
+                       text-sm font-semibold text-slate-700 shadow-sm transition-all duration-150
+                       hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancelar
+          </button>
+
+          <button
+            id="btn-confirmar-cita"
+            type="submit"
+            disabled={!isFormReady || isSubmitting}
+            className="w-full flex justify-center items-center gap-2 rounded-xl bg-indigo-600 px-4 py-3
+                       text-sm font-semibold text-white shadow-sm transition-all duration-150
+                       hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <>
+                <svg
+                  className="animate-spin h-4 w-4 shrink-0"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Confirmando…
+              </>
+            ) : (
+              "Confirmar cita"
+            )}
+          </button>
+        </div>
       </form>
     </div>
   );
