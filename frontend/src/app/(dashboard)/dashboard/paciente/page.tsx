@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession, isAuthenticated } from "@/lib/auth";
 import Link from "next/link";
+import PacienteDashboardMedicos from "@/components/PacienteDashboardMedicos";
 
 export default function PacienteDashboard() {
   const router = useRouter();
@@ -40,9 +41,7 @@ export default function PacienteDashboard() {
         </Link>
         </div>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-slate-600">Bienvenido al panel de paciente. Aquí irán los módulos de gestión.</p>
-      </div>
+      <PacienteDashboardMedicos />
     </div>
   );
 }
