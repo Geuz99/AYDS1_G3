@@ -8,6 +8,7 @@ from .views import (
     DoctorRegistrationView,
     DoctorViewSet,
     HorarioViewSet,
+    PacienteDashboardMedicosView,
     PatientRegistrationView,
     PatientViewSet,
 )
@@ -41,6 +42,13 @@ urlpatterns = [
 
     # Gestión de usuarios por admin (aprobar, rechazar, dar de baja)
     path("users/<int:user_id>/", UserApprovalView.as_view(), name="user-approval"),
+
+    # Dashboard paciente: medicos disponibles para agendar
+    path(
+        "pacientes/dashboard/medicos/",
+        PacienteDashboardMedicosView.as_view(),
+        name="paciente-dashboard-medicos",
+    ),
 
     # Refresh token
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),

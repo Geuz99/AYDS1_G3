@@ -178,6 +178,23 @@ class DoctorSerializer(serializers.ModelSerializer):
         return updated_instance
 
 
+class DoctorDashboardCardSerializer(serializers.ModelSerializer):
+    nombre_completo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Doctor
+        fields = (
+            "id",
+            "nombre_completo",
+            "especialidad",
+            "direccion_clinica",
+            "fotografia",
+        )
+
+    def get_nombre_completo(self, obj):
+        return f"{obj.nombre} {obj.apellido}".strip()
+
+
 class HorarioSerializer(serializers.ModelSerializer):
     doctor = serializers.PrimaryKeyRelatedField(
         queryset=Doctor.objects.all(),
