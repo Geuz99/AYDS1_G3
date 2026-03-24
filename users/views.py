@@ -3,6 +3,7 @@ from datetime import time
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db.models import Exists, OuterRef
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -13,6 +14,7 @@ from .models import CitaMedica, Doctor, Horario, Patient, User, WeekDayChoices
 from .serializers import (
     CitaMedicaSerializer,
     DoctorRegistrationSerializer,
+    DoctorDashboardCardSerializer,
     DoctorSerializer,
     HorarioSerializer,
     PatientRegistrationSerializer,
@@ -520,3 +522,63 @@ class DoctorRegistrationView(APIView):
             )
         doctor = serializer.save()
         return Response(DoctorSerializer(doctor).data, status=status.HTTP_201_CREATED)
+
+
+class PacienteDashboardMedicosView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if getattr(user, "role", None) != User.Role.PATIENT:
+            return Response(
+                {"detail": "Solo los pacientes pueden consultar este recurso."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        patient = Patient.objects.filter(user=user).first()
+        if patient is None:
+            return Response(
+                {"detail": "No existe perfil de paciente asociado al usuario autenticado."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            especialidad = (request.query_params.get("especialidad") or "").strip()
+
+            # Excluye medicos con cita vigente del paciente (ACTIVA/PENDIENTE).
+            citas_vigentes_subquery = CitaMedica.objects.filter(
+                paciente_id=patient.id,
+                medico_id=OuterRef("pk"),
+                estado__in=[CitaMedica.EstadoChoices.ACTIVA, "PENDIENTE"],
+            )
+
+            doctors_qs = (
+                Doctor.objects.select_related("user")
+                .filter(user__approval_status=User.ApprovalStatus.APPROVED)
+                .exclude(user__approval_status=User.ApprovalStatus.INACTIVE)
+                .annotate(tiene_cita_vigente=Exists(citas_vigentes_subquery))
+                .filter(tiene_cita_vigente=False)
+                .order_by("especialidad", "nombre", "apellido")
+            )
+
+            if especialidad:
+                doctors_qs = doctors_qs.filter(especialidad__icontains=especialidad)
+
+            serializer = DoctorDashboardCardSerializer(
+                doctors_qs,
+                many=True,
+                context={"request": request},
+            )
+            return Response(
+                {
+                    "count": len(serializer.data),
+                    "results": serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception:
+            return Response(
+                {"detail": "Error interno al obtener medicos del dashboard."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
