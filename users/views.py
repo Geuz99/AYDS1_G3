@@ -430,6 +430,26 @@ class CitaMedicaViewSet(viewsets.ModelViewSet):
         serializer.save(paciente=patient)
 
     def perform_update(self, serializer):
+        user = self.request.user
+        role = getattr(user, "role", None)
+
+        if role == User.Role.PATIENT:
+            validated = serializer.validated_data
+            campos_enviados = set(validated.keys())
+
+            # El paciente solo puede tocar el campo "estado"
+            campos_no_permitidos = campos_enviados - {"estado"}
+            if campos_no_permitidos:
+                raise ValidationError(
+                    "Un paciente solo puede modificar el campo 'estado' de una cita."
+                )
+
+            nuevo_estado = validated.get("estado")
+            if nuevo_estado is not None and nuevo_estado != CitaMedica.EstadoChoices.CANCELADA_PACIENTE:
+                raise ValidationError(
+                    "Un paciente solo puede cancelar su propia cita (estado: CANCELADA_PACIENTE)."
+                )
+
         cita_original = serializer.instance
         estado_anterior = cita_original.estado
 
