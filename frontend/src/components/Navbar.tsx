@@ -33,9 +33,15 @@ export default function Navbar() {
   }
 
   if (isAuthPage) return (
-    <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-50">
       <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="text-xl font-semibold tracking-tight text-slate-900">
+        <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-900">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-600">
+            <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
           SaludPlus
         </Link>
         <Link
@@ -52,9 +58,15 @@ export default function Navbar() {
   );
 
   return (
-    <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-50">
       <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-        <Link href={brandHref} className="text-xl font-semibold tracking-tight text-slate-900">
+        <Link href={brandHref} className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-900">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-600">
+            <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
           SaludPlus
         </Link>
 
