@@ -115,6 +115,12 @@ Recomendacion: cambiar esa password inmediatamente en cuanto ingreses.
 - Admin Django: `http://localhost:8000/admin/`
 - API base: `http://localhost:8000/api/`
 
+## Credenciales de prueba y desarrollo
+
+Para credenciales completas de pacientes y medicos (incluyendo escenarios HU-05), revisa:
+
+- `scripts/readme.md`
+
 ## Endpoints disponibles
 
 Autenticacion y registro (publicos):
