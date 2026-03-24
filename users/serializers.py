@@ -386,7 +386,7 @@ class PatientRegistrationSerializer(serializers.Serializer):
             username=username,
             email=email,
             role=User.Role.PATIENT,
-            approval_status=User.ApprovalStatus.APPROVED,
+            approval_status=User.ApprovalStatus.PENDING,
         )
         user.set_password(raw_password)
         user.save()
@@ -503,7 +503,7 @@ class DoctorRegistrationSerializer(serializers.Serializer):
             username=username,
             email=email,
             role=User.Role.DOCTOR,
-            approval_status=User.ApprovalStatus.APPROVED,
+            approval_status=User.ApprovalStatus.PENDING,
         )
         user.set_password(raw_password)
         user.save()
