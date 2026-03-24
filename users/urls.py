@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
+from users.views_reportes import ReportesView
 
 from .views import (
     CitaMedicaViewSet,
@@ -51,4 +52,5 @@ urlpatterns = [
 
     # Refresh token
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+    path("admin/reportes/", ReportesView.as_view(), name="1admin-reportes"),
 ]
