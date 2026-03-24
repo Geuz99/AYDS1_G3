@@ -58,3 +58,26 @@ class UserApprovalView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class Change2FAView(APIView):
+    """
+    POST /api/admin/change-2fa/
+    Body: { "new_second_password": "..." }
+    Solo para administradores.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != User.Role.ADMIN:
+            return Response({"detail": "No tienes permiso."}, status=status.HTTP_403_FORBIDDEN)
+
+        new_pwd = request.data.get("new_second_password", "").strip()
+        if not new_pwd:
+            return Response({"detail": "Debes enviar el campo 'new_second_password'."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(new_pwd) < 8:
+            return Response({"detail": "La contraseña debe tener al menos 8 caracteres."}, status=status.HTTP_400_BAD_REQUEST)
+
+        request.user.set_second_password(new_pwd)
+        request.user.save(update_fields=["second_password_hash"])
+        return Response({"detail": "Segunda contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
