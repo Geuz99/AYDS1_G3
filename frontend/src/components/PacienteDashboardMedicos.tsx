@@ -187,7 +187,7 @@ export default function PacienteDashboardMedicos() {
                 <p className="text-sm text-slate-600">{doctor.direccion_clinica}</p>
 
                 <Link
-                  href="/dashboard/paciente/reservar"
+                  href={`/dashboard/paciente/reservar?doctorId=${doctor.id}`}
                   className="mt-4 inline-flex rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-700"
                 >
                   Agendar cita
