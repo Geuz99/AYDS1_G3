@@ -103,12 +103,12 @@ export function getDashboardRoute(role: string): string {
 
 export function getProfileRoute(role: string): string {
   switch (role) {
-    case "DOCTOR":
-      return "/dashboard";
     case "ADMIN":
-      return "/dashboard/admin";
+      return "/dashboard/admin/perfil";
+    case "DOCTOR":
+      return "/dashboard/doctor/perfil";
     case "PATIENT":
-      return "/dashboard/paciente";
+      return "/dashboard/paciente/perfil";
     default:
       return "/";
   }
